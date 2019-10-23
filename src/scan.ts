@@ -1,4 +1,3 @@
-import { ScanCallback, Chars, TokenType } from './utils';
 import Scanner, { isWhiteSpace, isQuote } from '@emmetio/scanner';
 
 interface ScanState {
@@ -10,6 +9,35 @@ interface ScanState {
 
     /** Indicates we are inside CSS property */
     property: boolean;
+}
+
+export type ScanCallback = (value: string, type: TokenType, start: number, end: number, delimiter: number) => false | any;
+
+export const enum TokenType {
+    Selector = 'selector',
+    PropertyName = 'propertyName',
+    PropertyValue = 'propertyValue',
+    BlockEnd = 'blockEnd',
+}
+
+export const enum Chars {
+    /** `{` character */
+    LeftCurly = 123,
+    /** `}` character */
+    RightCurly = 125,
+    /** `*` character */
+    Asterisk = 42,
+    /** `/` character */
+    Slash = 47,
+    /** `:` character */
+    Colon = 58,
+    /** `;` character */
+    Semicolon = 59,
+    /** `\\` character */
+    Backslash = 92,
+
+    LF = 10,
+    CR = 13,
 }
 
 /**
@@ -29,9 +57,9 @@ export default function scan(source: string, callback: ScanCallback) {
     };
     let blockEnd: boolean;
 
-    const notify = (type: TokenType) => {
+    const notify = (type: TokenType, delimiter = scanner.start) => {
         const value = scanner.substring(state.start, state.end);
-        const shouldStop = callback(value, type, state.start, state.end) === false;
+        const shouldStop = callback(value, type, state.start, state.end, delimiter) === false;
         reset(state);
         return shouldStop;
     };
@@ -95,7 +123,7 @@ export default function scan(source: string, callback: ScanCallback) {
 
     if (state.start !== -1) {
         // There’s pending token in state
-        notify(state.property ? TokenType.PropertyValue : TokenType.PropertyName);
+        notify(state.property ? TokenType.PropertyValue : TokenType.PropertyName, -1);
     }
 }
 
