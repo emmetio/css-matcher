@@ -77,4 +77,9 @@ describe('Scanner', () => {
             ['}', 'blockEnd', 22, 23, 22]
         ]);
     });
+
+    it.only('pseudo-selectors', () => {
+        console.log(tokens('\na:hover { foo: bar "baz}" ; }'));
+
+    });
 });

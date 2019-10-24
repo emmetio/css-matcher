@@ -1,4 +1,4 @@
-import Scanner, { isWhiteSpace, isQuote } from '@emmetio/scanner';
+import Scanner, { isQuote, isSpace } from '@emmetio/scanner';
 
 interface ScanState {
     /** Start location of currently consumed token */
@@ -6,6 +6,12 @@ interface ScanState {
 
     /** End location of currently consumed token */
     end: number;
+
+    /** In block context */
+    block: number;
+
+    /** In expression context  */
+    expression: number;
 
     /** Indicates we are inside CSS property */
     property: boolean;
@@ -35,6 +41,14 @@ export const enum Chars {
     Semicolon = 59,
     /** `\\` character */
     Backslash = 92,
+    /** `@` character */
+    At = 64,
+    /** `$` character */
+    Dollar = 36,
+    /** `(` character */
+    LeftRound = 40,
+    /** `)` character */
+    RightRound = 41,
 
     LF = 10,
     CR = 13,
@@ -53,6 +67,8 @@ export default function scan(source: string, callback: ScanCallback) {
     const state: ScanState = {
         start: -1,
         end: -1,
+        block: 0,
+        expression: 0,
         property: false,
     };
     let blockEnd: boolean;
@@ -85,6 +101,7 @@ export default function scan(source: string, callback: ScanCallback) {
             }
 
             if (blockEnd) {
+                state.block--;
                 state.start = scanner.start;
                 state.end = scanner.pos;
 
@@ -94,6 +111,7 @@ export default function scan(source: string, callback: ScanCallback) {
             }
         } else if (scanner.eat(Chars.LeftCurly)) {
             // Block start
+            state.block++;
             if (state.start === -1) {
                 // No consumed selector, emit empty value as selector start
                 state.start = state.end = scanner.pos;
@@ -103,6 +121,15 @@ export default function scan(source: string, callback: ScanCallback) {
                 return;
             }
         } else if (scanner.eat(Chars.Colon)) {
+            // Colon could be one of the following:
+            // — property delimiter: `foo: bar`, must be in block context
+            // — variable delimiter: `$foo: bar`, could be anywhere
+            // — pseudo-selector: `a:hover`, could be anywhere (for LESS and SCSS)
+            // — media query expression: `min-width: 100px`, must be inside expression context
+            if (state.expression) {
+                continue;
+            }
+
             const property = state.start !== -1;
             if (state.start !== -1 && notify(TokenType.PropertyName)) {
                 return;
@@ -128,7 +155,7 @@ export default function scan(source: string, callback: ScanCallback) {
 }
 
 function whitespace(scanner: Scanner): boolean {
-    return scanner.eatWhile(isWhiteSpace);
+    return scanner.eatWhile(isSpace);
 }
 
 /**
@@ -181,4 +208,22 @@ function literal(scanner: Scanner) {
 function reset(state: ScanState) {
     state.start = state.end = -1;
     state.property = false;
+}
+
+/**
+ * Check if scanner is currently at pseudo-selector state
+ */
+function isPseudoSelector(scanner: Scanner): boolean {
+    const start = scanner.pos;
+    if (scanner.eatWhile(Chars.Colon)) {
+        // Pseudo-element
+        return true;
+    }
+
+    // Pseudo-selectors are always at the end of
+
+    const ch = scanner.peek();
+    if (isSpace(ch)) {
+        return false;
+    }
 }
