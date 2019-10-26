@@ -20,7 +20,7 @@ interface ScanState {
     expression: number;
 }
 
-export type ScanCallback = (value: string, type: TokenType, start: number, end: number, delimiter: number) => false | any;
+export type ScanCallback = (type: TokenType, start: number, end: number, delimiter: number) => false | any;
 
 export const enum TokenType {
     Selector = 'selector',
@@ -74,8 +74,7 @@ export default function scan(source: string, callback: ScanCallback) {
     let blockEnd: boolean;
 
     const notify = (type: TokenType, delimiter = scanner.start, start = state.start, end = state.end) => {
-        const value = scanner.substring(start, end);
-        return callback(value, type, start, end, delimiter) === false;
+        return callback(type, start, end, delimiter) === false;
     };
 
     while (!scanner.eof()) {

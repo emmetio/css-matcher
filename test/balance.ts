@@ -1,39 +1,35 @@
-// import { deepStrictEqual as deepEqual } from 'assert';
-import { balancedOutward, Range } from '../src';
+import { deepStrictEqual as deepEqual } from 'assert';
+import fs from 'fs';
+import path from 'path';
+import { balancedOutward } from '../src';
 
-type RangeFragment = [number, number, string];
-
-const code = `
-@media (min-width: 900px) and screen {
-    $width: 20px;
-    foo {
-        .bar[title="Enable"] {
-            padding: 10px;
-            margin: 20px;
-            position: absolute;
-        }
-    }
-
-    div {
-        font-weight: bold;
-        font-size: 12px;
-    }
-
-    .empty{}
-}
-
-blockquote.incut {
-    margin: 20px 10px;
-}
-`;
-
-function withFragment(range: Range): RangeFragment {
-    return [range[0], range[1], code.substring(range[0], range[1])];
-}
+const scssPath = path.resolve(__dirname, './samples/sample.scss');
+const code = fs.readFileSync(scssPath, 'utf8');
 
 describe('Balance', () => {
     it('outward', () => {
-        console.log(balancedOutward(code, 140).map(withFragment));
+        deepEqual(balancedOutward(code, 140), [
+            [145, 149],
+            [137, 150],
+            [110, 182],
+            [75, 192],
+            [61, 198],
+            [43, 281],
+            [0, 283]
+        ]);
 
+        deepEqual(balancedOutward(code, 77), [
+            [110, 182],
+            [75, 192],
+            [61, 198],
+            [43, 281],
+            [0, 283]
+        ]);
+
+        deepEqual(balancedOutward(code, 277), [
+            [273, 281],
+            [43, 281],
+            [0, 283]
+        ]);
     });
 });

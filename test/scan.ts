@@ -5,7 +5,7 @@ type Token = [string, TokenType, number, number, number];
 
 function tokens(str: string): Token[] {
     const result: Token[] = [];
-    scan(str, (value, type, start, end, delimiter) => result.push([value, type, start, end, delimiter]));
+    scan(str, (type, start, end, delimiter) => result.push([str.substring(start, end), type, start, end, delimiter]));
     return result;
 }
 

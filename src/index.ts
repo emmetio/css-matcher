@@ -16,7 +16,7 @@ export function balancedOutward(source: string, pos: number): Range[] {
     const result: Range[] = [];
     let property: TokenRange | null = null;
 
-    scan(source, (value, type, start, end, delimiter) => {
+    scan(source, (type, start, end, delimiter) => {
         if (type === TokenType.Selector) {
             stack.push(allocRange(pool, start, end, delimiter));
         } else if (type === TokenType.BlockEnd) {
@@ -24,8 +24,8 @@ export function balancedOutward(source: string, pos: number): Range[] {
             if (left && left[0] < pos && end > pos) {
                 // Matching section found
                 const inner = innerSelector(source, left[2] + 1, start);
-                inner && result.push(inner);
-                result.push([left[0], end]);
+                inner && push(result, inner);
+                push(result, [left[0], end]);
             }
             left && releaseRange(pool, left);
             if (!stack.length) {
@@ -35,10 +35,10 @@ export function balancedOutward(source: string, pos: number): Range[] {
             property && releaseRange(pool, property);
             property = allocRange(pool, start, end, delimiter);
         } else if (type === TokenType.PropertyValue) {
-            if (property && property[0] < pos && delimiter > pos) {
+            if (property && property[0] < pos && Math.max(delimiter, end) > pos) {
                 // Push full token and value range
-                result.push([start, delimiter]);
-                result.push([property[0], delimiter]);
+                push(result, [start, end]);
+                push(result, [property[0], delimiter !== -1 ? delimiter + 1 : end]);
             }
         }
 
@@ -81,4 +81,11 @@ function allocRange(pool: TokenRange[], start: number, end: number, delimiter: n
 function releaseRange(pool: TokenRange[], range: TokenRange | null) {
     range && pool.push(range);
     return null;
+}
+
+function push(ranges: Range[], range: Range) {
+    const last = ranges.length ? ranges[ranges.length - 1] : null;
+    if ((!last || last[0] !== range[0] || last[1] !== range[1]) && range[0] !== range[1]) {
+        ranges.push(range);
+    }
 }
