@@ -1,8 +1,10 @@
 {
   "name": "@emmetio/css-matcher",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "version": "0.1.0",
+  "description": "Small and fast CSS matcher",
+  "main": "./dist/css-matcher.cjs.js",
+  "module": "./dist/css-matcher.es.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "test": "mocha",
     "lint": "tslint ./src/*.ts",
@@ -10,7 +12,15 @@
     "clean": "rm -rf ./dist",
     "prepare": "npm run lint && npm test && npm run clean && npm run build"
   },
-  "keywords": [],
+  "keywords": [
+    "emmet",
+    "css",
+    "scss",
+    "less",
+    "matcher",
+    "match",
+    "selector"
+  ],
   "author": "Sergey Chikuyonok <serge.che@gmail.com>",
   "license": "MIT",
   "devDependencies": {
@@ -19,6 +29,8 @@
     "@types/node": "^12.11.5",
     "mocha": "^6.2.2",
     "rollup": "^1.25.2",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-typescript2": "^0.24.3",
     "ts-node": "^8.4.1",
     "tslint": "^5.20.0",
     "typescript": "^3.6.4"
