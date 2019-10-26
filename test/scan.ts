@@ -76,10 +76,38 @@ describe('Scanner', () => {
             ['bar "baz}"', 'propertyValue', 9, 19, 20],
             ['}', 'blockEnd', 22, 23, 22]
         ]);
+
+        deepEqual(tokens('@media (min-width: 900px) {}'), [
+            ['@media (min-width: 900px)', 'selector', 0, 25, 26],
+            ['}', 'blockEnd', 27, 28, 27]
+        ]);
     });
 
-    it.only('pseudo-selectors', () => {
-        console.log(tokens('\na:hover { foo: bar "baz}" ; }'));
+    it('pseudo-selectors', () => {
+        deepEqual(tokens('\na:hover { foo: bar "baz}" ; }'), [
+            ['a:hover', 'selector', 1, 8, 9],
+            ['foo', 'propertyName', 11, 14, 14],
+            ['bar "baz}"', 'propertyValue', 16, 26, 27],
+            ['}', 'blockEnd', 29, 30, 29]
+        ]);
 
+        deepEqual(tokens('a:hover b[title=""] { padding: 10px; }'), [
+            ['a:hover b[title=""]', 'selector', 0, 19, 20],
+            ['padding', 'propertyName', 22, 29, 29],
+            ['10px', 'propertyValue', 31, 35, 35],
+            ['}', 'blockEnd', 37, 38, 37]
+        ]);
+
+        deepEqual(tokens('a::before {}'), [
+            ['a::before', 'selector', 0, 9, 10],
+            ['}', 'blockEnd', 11, 12, 11]
+        ]);
+
+        deepEqual(tokens('a { &::before {  } }'), [
+            ['a', 'selector', 0, 1, 2],
+            ['&::before', 'selector', 4, 13, 14],
+            ['}', 'blockEnd', 17, 18, 17],
+            ['}', 'blockEnd', 19, 20, 19]
+        ]);
     });
 });

@@ -7,14 +7,17 @@ interface ScanState {
     /** End location of currently consumed token */
     end: number;
 
-    /** In block context */
-    block: number;
+    /** Location of possible property delimiter */
+    propertyDelimiter: number;
+
+    /** Location of possible property start */
+    propertyStart: number;
+
+    /** Location of possible property end */
+    propertyEnd: number;
 
     /** In expression context  */
     expression: number;
-
-    /** Indicates we are inside CSS property */
-    property: boolean;
 }
 
 export type ScanCallback = (value: string, type: TokenType, start: number, end: number, delimiter: number) => false | any;
@@ -41,10 +44,6 @@ export const enum Chars {
     Semicolon = 59,
     /** `\\` character */
     Backslash = 92,
-    /** `@` character */
-    At = 64,
-    /** `$` character */
-    Dollar = 36,
     /** `(` character */
     LeftRound = 40,
     /** `)` character */
@@ -67,17 +66,16 @@ export default function scan(source: string, callback: ScanCallback) {
     const state: ScanState = {
         start: -1,
         end: -1,
-        block: 0,
+        propertyStart: -1,
+        propertyEnd: -1,
+        propertyDelimiter: -1,
         expression: 0,
-        property: false,
     };
     let blockEnd: boolean;
 
-    const notify = (type: TokenType, delimiter = scanner.start) => {
-        const value = scanner.substring(state.start, state.end);
-        const shouldStop = callback(value, type, state.start, state.end, delimiter) === false;
-        reset(state);
-        return shouldStop;
+    const notify = (type: TokenType, delimiter = scanner.start, start = state.start, end = state.end) => {
+        const value = scanner.substring(start, end);
+        return callback(value, type, start, end, delimiter) === false;
     };
 
     while (!scanner.eof()) {
@@ -88,20 +86,26 @@ export default function scan(source: string, callback: ScanCallback) {
         scanner.start = scanner.pos;
         if ((blockEnd = scanner.eat(Chars.RightCurly)) || scanner.eat(Chars.Semicolon)) {
             // Block or property end
-            if (state.start === -1 && state.property) {
-                // Explicit property value state: emit empty value
-                state.start = state.end = scanner.start;
-            }
-
-            if (state.start !== -1) {
-                // Flush consumed token
-                if (notify(state.property ? TokenType.PropertyValue : TokenType.PropertyName)) {
+            if (state.propertyStart !== -1) {
+                // We have pending property
+                if (notify(TokenType.PropertyName, state.propertyDelimiter, state.propertyStart, state.propertyEnd)) {
                     return;
                 }
+
+                if (state.start === -1) {
+                    // Explicit property value state: emit empty value
+                    state.start = state.end = scanner.start;
+                }
+
+                if (notify(TokenType.PropertyValue)) {
+                    return;
+                }
+            } else if (state.start !== -1 && notify(TokenType.PropertyName)) {
+                // Flush consumed token
+                return;
             }
 
             if (blockEnd) {
-                state.block--;
                 state.start = scanner.start;
                 state.end = scanner.pos;
 
@@ -109,38 +113,49 @@ export default function scan(source: string, callback: ScanCallback) {
                     return;
                 }
             }
+
+            reset(state);
         } else if (scanner.eat(Chars.LeftCurly)) {
             // Block start
-            state.block++;
-            if (state.start === -1) {
+            if (state.start === -1 && state.propertyStart === -1) {
                 // No consumed selector, emit empty value as selector start
                 state.start = state.end = scanner.pos;
+            }
+
+            if (state.propertyStart !== -1) {
+                // Now we know that value that looks like property name-value pair
+                // was actually a selector
+                state.start = state.propertyStart;
             }
 
             if (notify(TokenType.Selector)) {
                 return;
             }
-        } else if (scanner.eat(Chars.Colon)) {
+            reset(state);
+        } else if (scanner.eat(Chars.Colon) && !isKnownSelectorColon(scanner, state)) {
             // Colon could be one of the following:
             // — property delimiter: `foo: bar`, must be in block context
             // — variable delimiter: `$foo: bar`, could be anywhere
             // — pseudo-selector: `a:hover`, could be anywhere (for LESS and SCSS)
             // — media query expression: `min-width: 100px`, must be inside expression context
-            if (state.expression) {
-                continue;
+            // Since I can’t easily detect `:` meaning for sure, we’ll update state
+            // to accumulate possible property name-value pair or selector
+            if (state.propertyStart === -1) {
+                state.propertyStart = state.start;
             }
-
-            const property = state.start !== -1;
-            if (state.start !== -1 && notify(TokenType.PropertyName)) {
-                return;
-            }
-            state.property = property;
+            state.propertyEnd = state.end;
+            state.propertyDelimiter = scanner.pos - 1;
+            state.start = state.end = -1;
         } else {
             if (state.start === -1) {
                 state.start = scanner.pos;
             }
 
-            if (!literal(scanner)) {
+            if (scanner.eat(Chars.LeftRound)) {
+                state.expression++;
+            } else if (scanner.eat(Chars.RightRound)) {
+                state.expression--;
+            } else if (!literal(scanner)) {
                 scanner.pos++;
             }
 
@@ -148,9 +163,16 @@ export default function scan(source: string, callback: ScanCallback) {
         }
     }
 
+    if (state.propertyStart !== -1) {
+        // Pending property name
+        if (notify(TokenType.PropertyName, state.propertyDelimiter, state.propertyStart, state.propertyEnd)) {
+            return;
+        }
+    }
+
     if (state.start !== -1) {
         // There’s pending token in state
-        notify(state.property ? TokenType.PropertyValue : TokenType.PropertyName, -1);
+        notify(state.propertyStart !== -1 ? TokenType.PropertyValue : TokenType.PropertyName, -1);
     }
 }
 
@@ -206,24 +228,13 @@ function literal(scanner: Scanner) {
 }
 
 function reset(state: ScanState) {
-    state.start = state.end = -1;
-    state.property = false;
+    state.start = state.end = state.propertyStart = state.propertyEnd = state.propertyDelimiter = -1;
 }
 
 /**
- * Check if scanner is currently at pseudo-selector state
+ * Check if current state is a known selector context for `:` delimiter
  */
-function isPseudoSelector(scanner: Scanner): boolean {
-    const start = scanner.pos;
-    if (scanner.eatWhile(Chars.Colon)) {
-        // Pseudo-element
-        return true;
-    }
-
-    // Pseudo-selectors are always at the end of
-
-    const ch = scanner.peek();
-    if (isSpace(ch)) {
-        return false;
-    }
+function isKnownSelectorColon(scanner: Scanner, state: ScanState) {
+    // Either inside expression like `(min-width: 10px)` or pseudo-element `::before`
+    return state.expression || scanner.eatWhile(Chars.Colon);
 }
