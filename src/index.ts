@@ -4,13 +4,72 @@ import { isSpace } from '@emmetio/scanner';
 export { default as scan, TokenType, ScanCallback } from './scan';
 
 export type Range = [number, number];
+export type MatchType = 'selector' | 'property';
 type TokenRange = [number, number, number];
+
+export interface MatchResult {
+    type: MatchType;
+    start: number;
+    end: number;
+    bodyStart: number;
+    bodyEnd: number;
+}
 
 interface InwardRange {
     start: number;
     end: number;
     delimiter: number;
     firstChild: InwardRange | null;
+}
+
+export default function match(source: string, pos: number): MatchResult | null {
+    const pool: TokenRange[] = [];
+    const stack: TokenRange[] = [];
+    let result: MatchResult | null = null;
+    let pendingProperty: TokenRange | null = null;
+
+    const releasePending = () => {
+        if (pendingProperty) {
+            releaseRange(pool, pendingProperty);
+            pendingProperty = null;
+        }
+    };
+
+    scan(source, (type, start, end, delimiter) => {
+        if (type === TokenType.Selector) {
+            releasePending();
+            stack.push(allocRange(pool, start, end, delimiter));
+        } else if (type === TokenType.BlockEnd) {
+            releasePending();
+            const parent = stack.pop();
+            if (parent && parent[0] < pos && pos < end) {
+                result = {
+                    type: 'selector',
+                    start: parent[0],
+                    end,
+                    bodyStart: parent[2] + 1,
+                    bodyEnd: start
+                };
+                return false;
+            }
+        } else if (type === TokenType.PropertyName) {
+            releasePending();
+            pendingProperty = allocRange(pool, start, end, delimiter);
+        } else if (type === TokenType.PropertyValue) {
+            if (pendingProperty && pendingProperty[0] < pos && pos < end) {
+                result = {
+                    type: 'property',
+                    start: pendingProperty[0],
+                    end: delimiter + 1,
+                    bodyStart: start,
+                    bodyEnd: end
+                };
+                return false;
+            }
+            releasePending();
+        }
+    });
+    return result;
 }
 
 /**
