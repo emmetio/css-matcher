@@ -38,5 +38,17 @@
   "mocha": {
     "require": "ts-node/register",
     "spec": "./test/*.ts"
-  }
+  },
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emmetio/css-matcher.git"
+  },
+  "bugs": {
+    "url": "https://github.com/emmetio/css-matcher/issues"
+  },
+  "homepage": "https://github.com/emmetio/css-matcher#readme"
 }

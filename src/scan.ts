@@ -207,7 +207,7 @@ function comment(scanner: Scanner): boolean {
 /**
  * Consumes single- or double-quoted string literal
  */
-function literal(scanner: Scanner) {
+export function literal(scanner: Scanner) {
     const ch = scanner.peek();
     if (isQuote(ch)) {
         scanner.start = scanner.pos++;

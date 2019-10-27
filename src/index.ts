@@ -2,6 +2,7 @@ import scan, { TokenType } from './scan';
 import { isSpace } from '@emmetio/scanner';
 
 export { default as scan, TokenType, ScanCallback } from './scan';
+export { splitValue } from './parse';
 
 export type Range = [number, number];
 export type MatchType = 'selector' | 'property';
