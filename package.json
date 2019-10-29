@@ -1,6 +1,6 @@
 {
   "name": "@emmetio/css-matcher",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Small and fast CSS matcher",
   "main": "./dist/css-matcher.cjs.js",
   "module": "./dist/css-matcher.es.js",
