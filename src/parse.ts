@@ -20,8 +20,8 @@ const operators: Operator[] = [
 /**
  * Splits given CSS value into token list
  */
-export function splitValue(value: string): Token[] {
-    let offset = -1;
+export function splitValue(value: string, offset = 0): Token[] {
+    let start = -1;
     let expression = 0;
     let pos = 0;
     const result: Token[] = [];
@@ -32,14 +32,14 @@ export function splitValue(value: string): Token[] {
         if (scanner.eat(isSpace) || scanner.eat(isOperator) || isMinusOperator(scanner)) {
             // Use space as value delimiter but only if not in expression context,
             // e.g. `1 2` are distinct values but `(1 2)` not
-            if (!expression && offset !== -1) {
-                result.push([offset, pos]);
-                offset = -1;
+            if (!expression && start !== -1) {
+                result.push([offset + start, offset + pos]);
+                start = -1;
             }
             scanner.eatWhile(isSpace);
         } else {
-            if (offset === -1) {
-                offset = scanner.pos;
+            if (start === -1) {
+                start = scanner.pos;
             }
 
             if (scanner.eat(Chars.LeftRound)) {
@@ -52,8 +52,8 @@ export function splitValue(value: string): Token[] {
         }
     }
 
-    if (offset !== -1 && offset !== scanner.pos) {
-        result.push([offset, scanner.pos]);
+    if (start !== -1 && start !== scanner.pos) {
+        result.push([offset + start, offset + scanner.pos]);
     }
 
     return result;
