@@ -24,7 +24,6 @@
   "author": "Sergey Chikuyonok <serge.che@gmail.com>",
   "license": "MIT",
   "devDependencies": {
-    "@emmetio/scanner": "0.0.7",
     "@types/mocha": "^5.2.7",
     "@types/node": "^12.11.5",
     "mocha": "^6.2.2",
@@ -42,7 +41,9 @@
   "directories": {
     "test": "test"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@emmetio/scanner": "0.0.7"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/emmetio/css-matcher.git"
