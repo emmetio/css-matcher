@@ -12,7 +12,7 @@ const data = match(content, 2);
 
 console.log(data.type); // Type of match: 'selector'
 console.log(tag.start); // Location of match start: 0
-console.log(tag.end); // Location of match emd: 22
+console.log(tag.end); // Location of match end: 22
 ```
 
 Matcher searches `content` for a context match closest to given `location` and, if found, returns object with the following properties:
