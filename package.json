@@ -42,7 +42,7 @@
     "test": "test"
   },
   "dependencies": {
-    "@emmetio/scanner": "0.0.7"
+    "@emmetio/scanner": "^0.0.8"
   },
   "repository": {
     "type": "git",
